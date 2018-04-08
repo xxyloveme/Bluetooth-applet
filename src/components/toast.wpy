@@ -1,0 +1,98 @@
+<style lang="less">
+.toast {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 100;
+  .toast-box{
+    opacity: 0; 
+    position: fixed;
+    z-index: 1000;
+    left: 50%;
+    transform: translateX(-50%);
+    box-sizing: border-box;
+    word-wrap: break-word;
+    word-break: break-all;
+    color: #ffffff; 
+    border-radius: 10rpx;
+    text-align: center; 
+    background: rgba(40, 40, 40, 0.75);
+    .bluetooth{
+      width: 55rpx;
+      height: 65rpx;
+      margin: 27rpx 0 10rpx;
+    }
+    .loading{
+      width: 270rpx;
+      height: 130rpx;
+      margin-top: -35rpx;
+    }
+  }
+  .toast-img{
+    top:40%;
+    height: 220rpx;
+    width: 270rpx;
+  }
+  .toast-text{
+    bottom: 20%;
+    min-width: 100rpx;
+    padding: 10rpx 20rpx;
+  }
+}
+</style>
+<template>
+  <view wx:if="{{ifshow}}" class="toast">
+    <view class="toast-box {{isShowImg?'toast-img':'toast-text'}}" animation="{{animationData}}">
+        <image src="/img/blutooth2.png" wx:if="{{isShowImg}}" class="bluetooth"/>
+        <view>{{toastTxt}}</view>
+        <image src="/img/c.svg" wx:if="{{isShowImg}}" class="loading"/>
+    </view>
+  </view>
+</template>
+<script>
+import wepy from 'wepy'
+export default class Toast extends wepy.component {
+  data = {
+    ifshow: false,
+    toastTxt: '',
+    isShowImg: false,
+    animationData: ''
+  }
+
+  show (data) {
+    this.isShowImg = data.isShowImg
+    this.toastTxt = data.toastTxt
+    this.$apply()
+    return this.showFn()
+  }
+
+  async showFn () {
+    let _this = this
+    let animation = await wepy.createAnimation()
+    setTimeout(() => {
+      animation.opacity(1).step()
+      _this.animationData = animation.export()
+      _this.ifshow = true
+      _this.$apply()
+    }, 300)
+    if (!this.isShowImg) {
+      _this.hide()
+    }
+  }
+
+  hide () {
+    let _this = this
+    setTimeout(async () => {
+      let animation = await wepy.createAnimation()
+      setTimeout(() => {
+        animation.opacity(0).step()
+        _this.animationData = animation.export()
+        _this.ifshow = false
+        _this.$apply()
+      }, 300)
+    }, 1500)
+  }
+}
+</script>

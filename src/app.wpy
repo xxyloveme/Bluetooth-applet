@@ -1,0 +1,53 @@
+<style lang="less">
+.container {
+  height: 100%;
+  box-sizing: border-box;
+}
+</style>
+
+<script>
+import wepy from 'wepy'
+import 'wepy-async-function'
+
+export default class extends wepy.app {
+  config = {
+    pages: [
+      'pages/index'
+    ],
+    window: {
+      backgroundTextStyle: 'light',
+      navigationBarBackgroundColor: '#0ABE96',
+      navigationBarTitleText: '闪电熊',
+      navigationBarTextStyle: '#fff'
+    }
+  }
+
+  globalData = {
+    userInfo: null
+  }
+
+  constructor() {
+    super()
+    this.use('requestfix')
+    this.use('promisify')
+  }
+
+  onLaunch () {
+    wepy.getUserInfo().then((res) => {
+      this.globalData.userInfo = res.userInfo
+    })
+  }
+
+  getUserInfo (cb) {
+    var that = this
+    if (this.globalData.userInfo) {
+      typeof cb === 'function' && cb(this.globalData.userInfo)
+    } else {
+      wepy.getUserInfo().then((res) => {
+        that.globalData.userInfo = res.userInfo
+        typeof cb === 'function' && cb(that.globalData.userInfo)
+      })
+    }
+  }
+}
+</script>

@@ -1,0 +1,456 @@
+<style lang="less">
+.top {
+  background: #0abe96;
+  height: 640rpx;
+  position: relative;
+  .box {
+    position: absolute;
+    bottom: 0;
+    left: 30rpx;
+    right: 30rpx;
+    height: 520rpx;
+    background: #fff;
+    border-radius: 10rpx 10rpx 0 0;
+    text-align: center;
+    .img {
+      width: 150rpx;
+      height: 150rpx;
+      border-radius: 50%;
+      margin-top: -75rpx;
+      box-shadow: 0rpx 5rpx 10rpx rgba(0, 0, 0, 0.1);
+    }
+    .imgList {
+      margin-top: 86rpx;
+      .bluetooth {
+        width: 128rpx;
+        height: 150rpx;
+      }
+      .response {
+        width: 118rpx;
+        height: 156rpx;
+        margin: 0 80rpx;
+      }
+      .phone {
+        width: 94rpx;
+        height: 150rpx;
+      }
+    }
+    .btn {
+      width: 510rpx;
+      height: 90rpx;
+      background: linear-gradient(#0cbd8d, #06c1ae);
+      outline: none;
+      border: none;
+      border-radius: 45rpx;
+      color: #fff;
+      margin-top: 65rpx;
+    }
+    button::after {
+      content: none;
+    }
+  }
+}
+.lists {
+  padding: 40rpx 30rpx;
+  height: 170rpx;
+  box-sizing: border-box;
+  margin-bottom: 10rpx;
+  .name {
+    font-size: 36rpx;
+    color: #06ceae;
+  }
+  .distance {
+    float: right;
+    color: #333;
+  }
+  .deviceid {
+    font-size: 24rpx;
+    padding-top: 10rpx;
+    color: #666;
+  }
+}
+.lists.active{
+  background: #999;
+}
+.lists.noactive{
+  background: #f5f5f5;
+}
+</style>
+<template>
+  <view class="container">
+    <toast></toast>
+    <alert @btnTap.user="alertTap"></alert>
+    <view class="top">
+      <view class="box">
+        <image src="{{userInfo.avatarUrl || '/img/avatar.png'}}" background-size="cover" class="img"/>
+        <view class="imgList">
+          <image src="/img/blutooth1.png" class="bluetooth"/>
+          <image src="{{flag?'/img/1.png':'/img/response.gif'}}" class="response"/>
+          <image src="/img/telphone.png" class="phone"/>
+        </view>
+        <button @tap="search" class="btn">点击搜索</button>
+      </view>
+    </view>
+    <view wx:for="{{deviceList}}" wx:key="index" class="lists {{item.active?'active':'noactive'}}" @tap="connetDevice({{index}})">
+      <view>
+        <text class="name">{{item.name}}</text>
+        <text class="distance">{{item.RSSI}}</text>
+      </view>
+      <view class="deviceid">{{item.deviceId}}</view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import toast from '@/components/toast'
+  import alert from '@/components/alert'
+
+  export default class Index extends wepy.page {
+    config = {
+      navigationBarTitleText: '闪电熊'
+    }
+
+    data = {
+      deviceList: [],
+      userInfo: '',
+      flag: true,
+      active: false,
+      activeIndex: 0,
+      characteristicId: [],
+      dataList: [],
+      deviceId: '',
+      serviceId: ''
+    }
+
+    methods = {
+      // 搜索设备
+      search() {
+        let _this = this
+        _this.deviceList = []
+        _this.$apply()
+        _this.flag = false
+        wepy.startBluetoothDevicesDiscovery({services: ['1023']}).then((res) => {
+          setTimeout(() => {
+            wepy.getBluetoothDevices().then((res) => {
+              console.log('res:' + JSON.stringify(res))
+              _this.flag = true
+              let arr = []
+              if (res.devices.length > 0) {
+                for (let i = 0; i < res.devices.length; i++) {
+                  res.devices[i].active = false
+                  if (res.devices[i].RSSI > -60) {
+                    arr.push(res.devices[i])
+                  }
+                }
+                if (arr.length > 0) {
+                  _this.deviceList = arr
+                } else {
+                  _this.$invoke('toast', 'show', {
+                    isShowImg: false,
+                    toastTxt: '未搜索到设备，请重试'
+                  })
+                }
+              } else {
+                this.$invoke('toast', 'show', {
+                  isShowImg: false,
+                  toastTxt: '未搜索到设备，请重试'
+                })
+              }
+              wepy.stopBluetoothDevicesDiscovery()
+              _this.$apply()
+            }).catch((e) => {
+              console.log('e:' + JSON.stringify(e))
+              this.$invoke('toast', 'show', {
+                isShowImg: false,
+                toastTxt: '搜索失败，请重试'
+              })
+              _this.flag = true
+            })
+          }, 2500)
+        }).catch((e) => {
+          if (e.errCode.toString().indexOf('10001') > -1) {
+            _this.flag = true
+            _this.$apply()
+            this.$invoke('toast', 'show', {
+              isShowImg: false,
+              toastTxt: '请检查是否打开蓝牙'
+            })
+          }
+        })
+        _this.$apply()
+      },
+      // 连接设备
+      connetDevice(index) {
+        console.log('index:' + index)
+        this.activeIndex = index
+        this.deviceList[index].active = true
+        this.$invoke('alert', 'show', {
+          ifinput: false,
+          title: '设备Mac地址',
+          status: '断开中',
+          number: this.deviceList[index].deviceId,
+          btntype: '连接'
+        })
+        this.deviceId = this.deviceList[index].deviceId
+        this.$apply()
+      },
+      alertTap (type) {
+        let _this = this
+        if (type === 1) {
+          // 点击连接按钮
+          _this.$invoke('alert', 'hide')
+          _this.$invoke('toast', 'show', {
+            isShowImg: true,
+            toastTxt: '连接中'
+          })
+          // 创建连接
+          wepy.createBLEConnection({deviceId: _this.deviceId}).then((res) => {
+            // 获取连接的设备的UUID
+            wepy.getBLEDeviceServices({deviceId: _this.deviceId}).then((res) => {
+              _this.serviceId = res.services[0].uuid
+              // 获取连接设备的特征值
+              wepy.getBLEDeviceCharacteristics({deviceId: _this.deviceId, serviceId: _this.serviceId}).then((res) => {
+                for (let i = 0; i < res.characteristics.length; i++) {
+                  if (res.characteristics[i].properties.read && res.characteristics[i].properties.write) {
+                    _this.characteristicId.push(res.characteristics[i].uuid)
+                  }
+                }
+                _this.$apply()
+                _this.getValue(_this.characteristicId, (number) => {
+                  _this.$invoke('toast', 'hide')
+                  _this.$invoke('alert', 'show', {
+                    ifinput: true,
+                    title: '设备号',
+                    status: '已连接',
+                    number: number,
+                    btntype: '提交'
+                  })
+                })
+              }).catch((e) => {
+              })
+            }).catch((e) => {
+            })
+          }).catch((e) => {
+            if (e.errCode.toString().indexOf('10003') > -1) {
+              this.getError('连接失败请重试')
+            }
+          })
+        } else if (type === 2) {
+          // 点击提交按钮
+          let inputValue = wepy.getStorageSync('inputValue')
+          _this.$invoke('alert', 'hide')
+          _this.$invoke('toast', 'show', {
+            isShowImg: true,
+            toastTxt: '提交中'
+          })
+          _this.inputValue(_this.characteristicId, inputValue, () => {
+            _this.$invoke('toast', 'show', {
+              isShowImg: false,
+              toastTxt: '提交成功'
+            })
+            wepy.closeBLEConnection({deviceId: _this.deviceList[_this.activeIndex].deviceId})
+            _this.deviceList[_this.activeIndex].active = false
+            _this.dataList = []
+            _this.characteristicId = []
+            _this.$apply()
+          })
+        } else if (type === 3) {
+          // 点击取消按钮
+          wepy.closeBLEConnection({deviceId: _this.deviceList[_this.activeIndex].deviceId})
+          _this.deviceList[_this.activeIndex].active = false
+          _this.dataList = []
+          _this.characteristicId = []
+          _this.$apply()
+        }
+      }
+    }
+
+    getError (text) {
+      this.$invoke('toast', 'show', {
+        isShowImg: false,
+        toastTxt: text
+      })
+      wepy.closeBLEConnection({deviceId: this.deviceList[this.activeIndex].deviceId})
+      this.deviceList[this.activeIndex].active = false
+      this.dataList = []
+      this.characteristicId = []
+      this.$apply()
+    }
+
+    // 循环读取对应的设备特征值
+    getValue (arr, cb) {
+      let _this = this
+      _this.getRead(arr[0], function() {
+        _this.getRead(arr[1], function() {
+          _this.getRead(arr[2], function() {
+            _this.getRead(arr[3], function() {
+              _this.getRead(arr[4], function() {
+                _this.getRead(arr[5], function() {
+                  _this.toString(_this.dataList, function(str) {
+                    cb(str)
+                  })
+                })
+              })
+            })
+          })
+        })
+      })
+    }
+
+    // 读取蓝牙设备的特征值的二进制数据值
+    getRead (value, cb) {
+      let _this = this
+      wepy.readBLECharacteristicValue({deviceId: _this.deviceId, serviceId: _this.serviceId, characteristicId: value}).then((res) => {
+        wepy.onBLECharacteristicValueChange(function(characteristic) {
+          let uuid = _this.ab2hex(characteristic.value)
+          _this.dataList.push(uuid)
+          _this.$apply()
+          cb()
+        })
+      }).catch((e) => {
+        this.getError('读取数据失败，请重试')
+      })
+    }
+
+    // 循环写入对应的设备特征值
+    inputValue(characteristicArr, inputValue, cb) {
+      let _this = this
+      let arr = _this.toString16(inputValue)
+      _this.inputFn(characteristicArr[0], arr[0], function() {
+        _this.inputFn(characteristicArr[1], arr[1], function() {
+          _this.inputFn(characteristicArr[3], arr[3], function() {
+            _this.inputFn(characteristicArr[5], arr[4], function() {
+              _this.inputFn(characteristicArr[2], arr[2], function() {
+                cb()
+              })
+            })
+          })
+        })
+      })
+    }
+
+    // 向蓝牙设备特征值中写入二进制数据
+    inputFn (value1, value2, cb) {
+      wepy.writeBLECharacteristicValue({deviceId: this.deviceId, serviceId: this.serviceId, characteristicId: value1, value: this.toBuffer(value2)}).then((res) => {
+        setTimeout(() => {
+          cb()
+        }, 250)
+      }).catch((e) => {
+        cb()
+        // this.getError('写入数据失败，请重试')
+      })
+    }
+    // ArrayBuffer转16进度字符串
+    ab2hex(buffer) {
+      let hexArr = Array.prototype.map.call(
+        new Uint8Array(buffer),
+        function(bit) {
+          return ('00' + bit.toString(16)).slice(-2)
+        }
+      )
+      return hexArr.join('')
+    }
+
+    // 16进度字符串转ArrayBuffer
+    toBuffer (str) {
+      var typedArray = new Uint8Array(str.match(/[\da-f]{2}/gi).map(function (h) {
+        return parseInt(h, 16)
+      }))
+      var buf = typedArray.buffer
+      return buf
+    }
+
+    // 15位设备号转16进制字符串数组
+    toString16 (str) {
+      let arr = []
+      let str1 = parseInt(str.slice(0, 5)).toString(16) + ''
+      let str2 = parseInt(str.slice(5, 7)).toString(16) + ''
+      let str3 = parseInt(str.slice(7, 9)).toString(16) + ''
+      let str4 = parseInt(str.slice(9, 10)).toString(16) + ''
+      let str5 = parseInt(str.slice(10, 13)).toString(16) + ''
+      let str6 = parseInt(str.slice(13)).toString(16) + ''
+      let str7 = ''
+      while (str1.length < 8) {
+        str1 = '0' + str1
+      }
+      while (str2.length < 2) {
+        str2 = '0' + str2
+      }
+      while (str3.length < 2) {
+        str3 = '0' + str3
+      }
+      while (str4.length < 2) {
+        str4 = '0' + str4
+      }
+      while (str5.length < 2) {
+        str5 = '0' + str5
+      }
+      while (str6.length < 4) {
+        str6 = '0' + str6
+      }
+      str7 = str2 + str3
+      arr[0] = str1
+      arr[1] = str7
+      arr[2] = str4
+      arr[3] = str5
+      arr[4] = str6
+      return arr
+    }
+
+    // 16进制字符串数组转10进制的15位设备号
+    toString (arr, cb) {
+      let str = []
+      let str1 = parseInt(arr[0], 16) + ''
+      let str2 = parseInt(arr[1].slice(0, 2), 16) + ''
+      let str3 = parseInt(arr[1].slice(2), 16) + ''
+      let str4 = parseInt(arr[2], 16) + ''
+      let str5 = parseInt(arr[3], 16) + ''
+      let str6 = parseInt(arr[5], 16) + ''
+      while (str1.length < 5) {
+        str1 = '0' + str1
+      }
+      while (str2.length < 2) {
+        str2 = '0' + str2
+      }
+      while (str3.length < 2) {
+        str3 = '0' + str3
+      }
+      while (str5.length < 3) {
+        str5 = '0' + str5
+      }
+      while (str6.length < 2) {
+        str6 = '0' + str6
+      }
+      str[0] = str1
+      str[1] = str2
+      str[2] = str3
+      str[3] = str4
+      str[4] = str5
+      str[5] = str6
+      let num = str.join('')
+      cb(num)
+    }
+
+    components = {
+      toast,
+      alert
+    }
+
+    onShow() {
+      this.$parent.getUserInfo((userInfo) => {
+        this.userInfo = userInfo
+        this.$apply()
+      })
+      wepy.openBluetoothAdapter().then((res) => {
+      }).catch((e) => {
+        if (e.errCode.toString().indexOf('10001') > -1) {
+          this.$invoke('toast', 'show', {
+            isShowImg: false,
+            toastTxt: '请检查是否打开蓝牙'
+          })
+        }
+      })
+    }
+  }
+</script>

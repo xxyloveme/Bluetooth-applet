@@ -1,0 +1,168 @@
+<style lang="less">
+.alert {
+  .mask{
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .alert-box{
+    width: 500rpx;
+    border-radius: 10rpx;
+    background: #fff;
+    position: fixed;
+    z-index: 1000;
+    text-align: center;
+    left: 50%;
+    margin-left: -250rpx;
+    top: 25%;
+    .title{
+      font-size: 34rpx;
+      color: #333;
+      margin-top: 64rpx;
+    }
+    .status{
+      font-size: 30rpx;
+      color: #06c1ae;
+      margin-top: 40rpx;
+    }
+    .number{
+      font-size: 40rpx;
+      color:#333;
+      margin-top: 40rpx;
+    }
+    .input{
+      border:none;
+      border-bottom: 1px solid #ddd;
+      width: 400rpx;
+      font-size: 30rpx;
+      color: #999;
+      margin: 65rpx auto 0;
+      text-align: left;
+    }
+    .tips{
+      font-size: 28rpx;
+      color: red;
+      margin: 5rpx 0;
+    }
+    .btn{
+      width: 410rpx;
+      height: 70rpx;
+      line-height: 70rpx;
+      font-size: 34rpx;
+      background: linear-gradient(#0cbd8d, #06c1ae);
+      outline: none;
+      border: none;
+      border-radius: 45rpx;
+      color: #fff;
+      margin-top: 70rpx;
+      margin-bottom: 50rpx;
+    }
+    .close{
+      position: absolute;
+      width: 28rpx;
+      height: 28rpx;
+      padding: 20rpx;
+      top: 0rpx;
+      left: 0rpx;
+    }
+    button::after {
+      content: none;
+    }
+  }
+}
+</style>
+<template>
+  <view wx:if="{{ifshow}}" class="alert">
+    <view class="mask"></view>
+    <view class="alert-box">
+        <image src="/img/close.png" class="close" @tap="close"/>
+        <view class="title">{{title}}</view>
+        <view class="status">{{status}}</view>
+        <view class="number">{{number}}</view>
+        <input placeholder="请输入15位新的设备号" wx:if="{{ifinput}}" class="input" bindinput="bindKeyInput" type="number"/>
+        <view class="tips" wx:if="{{iferror}}">{{tips}}</view>
+        <button class="btn" @tap="tap">{{btntype}}</button>
+    </view>
+  </view>
+</template>
+<script>
+import wepy from 'wepy'
+import toast from '@/components/toast'
+export default class Alert extends wepy.component {
+  data = {
+    ifshow: false,
+    animationData: '',
+    ifinput: true,
+    title: '',
+    status: '',
+    number: '',
+    btntype: '',
+    inputValue: '',
+    iferror: false,
+    tips: ''
+  }
+
+  methods = {
+    tap () {
+      let type = ''
+      if (this.ifinput) {
+        if (this.inputValue) {
+          if (this.inputValue.length === 15) {
+            if (this.inputValue === this.number) {
+              this.iferror = true
+              this.tips = '请不要输入同样的设备号'
+            } else {
+              type = 2
+              this.iferror = false
+              wepy.setStorageSync('inputValue', this.inputValue)
+              this.$emit('btnTap', type)
+              return false
+            }
+          } else {
+            this.iferror = true
+            this.tips = '请检查设备号是否为15位'
+          }
+        } else {
+          this.iferror = true
+          this.tips = '请输入设备号'
+        }
+      } else {
+        type = 1
+        this.$emit('btnTap', type)
+      }
+      this.$apply()
+    },
+    close () {
+      this.$emit('btnTap', 3)
+      this.hide()
+    },
+    bindKeyInput (e) {
+      this.inputValue = e.detail.value
+      this.$apply()
+    }
+  }
+
+  show (data) {
+    this.ifinput = data.ifinput
+    this.title = data.title
+    this.status = data.status
+    this.number = data.number
+    this.btntype = data.btntype
+    this.ifshow = true
+    this.$apply()
+  }
+
+  hide () {
+    this.ifshow = false
+    this.$apply()
+  }
+
+  components = {
+    toast
+  }
+}
+</script>
