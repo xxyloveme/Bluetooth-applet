@@ -452,5 +452,12 @@
         }
       })
     }
+    
+    onHide () {
+      this.deviceList = []
+      wepy.closeBluetoothAdapter().then((res) => {
+      }).catch((e) => {
+      })
+    }
   }
 </script>
