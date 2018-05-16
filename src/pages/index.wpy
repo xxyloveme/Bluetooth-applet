@@ -130,7 +130,7 @@
         _this.deviceList = []
         _this.$apply()
         _this.flag = false
-        wepy.startBluetoothDevicesDiscovery({services: ['1023']}).then((res) => {
+        wepy.startBluetoothDevicesDiscovery().then((res) => {
           setTimeout(() => {
             wepy.getBluetoothDevices().then((res) => {
               console.log('res:' + JSON.stringify(res))
